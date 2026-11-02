@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Funkverwaltung Sicherheitsdienst</title>
+<meta name="description" content="Web-App zur Verwaltung von Funkgeräten, Akkus und Zubehör für Sicherheitsdienste: Ausgabe, Rücknahme, Bestand und Protokoll.">
+<meta name="theme-color" content="#14213d">
+<style>
+:root {
+  --bg: #f4f6f9;
+  --surface: #ffffff;
+  --surface-2: #eef1f6;
+  --text: #1b2433;
+  --muted: #5d6879;
+  --border: #d8dde6;
+  --primary: #1f4fd1;
+  --primary-text: #ffffff;
+  --nav: #14213d;
+  --nav-text: #dfe6f3;
+  --nav-active: #2b3d66;
+  --ok: #17803d;
+  --ok-bg: #e3f5e9;
+  --warn: #9a5b00;
+  --warn-bg: #fff1d6;
+  --bad: #b42318;
+  --bad-bg: #fde7e5;
+  --info: #1f4fd1;
+  --info-bg: #e3ebff;
+  --shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f141c; --surface: #171e29; --surface-2: #1f2835; --text: #e6ebf2; --muted: #9aa6b8;
+    --border: #2c3747; --primary: #5b8cff; --primary-text: #0b1020; --nav: #0b1018; --nav-text: #c9d3e3;
+    --nav-active: #1f2a3c; --ok: #5fd08a; --ok-bg: #143322; --warn: #f2b84b; --warn-bg: #3a2a0d;
+    --bad: #ff7a6e; --bad-bg: #3d1714; --info: #8fb0ff; --info-bg: #1a2648; --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f141c; --surface: #171e29; --surface-2: #1f2835; --text: #e6ebf2; --muted: #9aa6b8;
+  --border: #2c3747; --primary: #5b8cff; --primary-text: #0b1020; --nav: #0b1018; --nav-text: #c9d3e3;
+  --nav-active: #1f2a3c; --ok: #5fd08a; --ok-bg: #143322; --warn: #f2b84b; --warn-bg: #3a2a0d;
+  --bad: #ff7a6e; --bad-bg: #3d1714; --info: #8fb0ff; --info-bg: #1a2648; --shadow: none;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  min-height: 100vh;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+.app { display: grid; grid-template-columns: 230px 1fr; min-height: 100vh; }
+nav.side { background: var(--nav); color: var(--nav-text); padding: 18px 12px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 18px; font-weight: 700; font-size: 16px; color: #fff; }
+.brand svg { flex: none; }
+.brand small { display: block; font-weight: 400; font-size: 12px; color: var(--nav-text); opacity: .75; }
+nav.side button.nav {
+  display: flex; align-items: center; justify-content: space-between; width: 100%; text-align: left;
+  background: none; border: 0; color: var(--nav-text); padding: 9px 10px; border-radius: 8px; cursor: pointer;
+}
+nav.side button.nav:hover { background: var(--nav-active); }
+nav.side button.nav[aria-current="page"] { background: var(--nav-active); color: #fff; font-weight: 600; }
+.pill { font-size: 12px; background: rgba(255,255,255,.14); padding: 0 7px; border-radius: 999px; }
+.pill.alert { background: #d92d20; color: #fff; }
+.side-foot { margin-top: 18px; padding: 10px; font-size: 12px; opacity: .7; }
+.side-foot button { background: none; border: 1px solid rgba(255,255,255,.25); color: var(--nav-text); border-radius: 6px; padding: 4px 8px; cursor: pointer; }
+main { padding: 24px 28px 60px; min-width: 0; }
+header.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+h1 { font-size: 22px; margin: 0; }
+h2 { font-size: 16px; margin: 0 0 12px; }
+.muted { color: var(--muted); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; box-shadow: var(--shadow); }
+.grid { display: grid; gap: 14px; }
+.kpis { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); margin-bottom: 18px; }
+.kpi .v { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.kpi .l { color: var(--muted); font-size: 13px; }
+.kpi.bad .v { color: var(--bad); }
+.two { grid-template-columns: 1fr 1fr; }
+.btn {
+  display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); background: var(--surface);
+  padding: 7px 12px; border-radius: 8px; cursor: pointer; white-space: nowrap;
+}
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--primary); border-color: var(--primary); color: var(--primary-text); font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.danger { color: var(--bad); }
+.btn.sm { padding: 3px 9px; font-size: 13px; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+.toolbar input[type="search"] { flex: 1 1 220px; }
+input[type="text"], input[type="search"], input[type="number"], input[type="datetime-local"], input[type="tel"], select, textarea {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; width: 100%; min-width: 0;
+}
+textarea { min-height: 70px; resize: vertical; }
+input:focus, select:focus, textarea:focus, .btn:focus-visible, button.nav:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+label.f { display: block; margin-bottom: 12px; }
+label.f > span { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+.form-grid .full { grid-column: 1 / -1; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; background: var(--surface-2); }
+tr:last-child td { border-bottom: 0; }
+td.actions { white-space: nowrap; text-align: right; }
+tr.overdue td { background: var(--bad-bg); }
+.badge { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.b-ok { background: var(--ok-bg); color: var(--ok); }
+.b-warn { background: var(--warn-bg); color: var(--warn); }
+.b-bad { background: var(--bad-bg); color: var(--bad); }
+.b-info { background: var(--info-bg); color: var(--info); }
+.empty { padding: 28px; text-align: center; color: var(--muted); }
+.checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; max-height: 170px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 8px; }
+.checks label { display: flex; gap: 6px; align-items: center; }
+.acc-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+.acc-row span { flex: 1; }
+.acc-row input { width: 80px; }
+.log li { padding: 7px 0; border-bottom: 1px solid var(--border); list-style: none; display: flex; gap: 12px; }
+.log { padding: 0; margin: 0; }
+.log time { color: var(--muted); font-variant-numeric: tabular-nums; flex: none; width: 140px; }
+dialog { border: 1px solid var(--border); border-radius: 14px; padding: 0; background: var(--surface); color: var(--text); width: min(560px, calc(100vw - 32px)); }
+dialog::backdrop { background: rgba(10,15,25,.5); }
+dialog form { padding: 18px; }
+dialog .dlg-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+.toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 9px 16px; border-radius: 8px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 10; }
+.toast.show { opacity: 1; }
+.menu-btn { display: none; }
+#print { display: none; }
+@media (max-width: 860px) {
+  .app { grid-template-columns: 1fr; }
+  nav.side { position: fixed; inset: 0 auto 0 0; width: 250px; transform: translateX(-100%); transition: transform .2s; z-index: 5; }
+  nav.side.open { transform: none; }
+  .menu-btn { display: inline-flex; }
+  main { padding: 16px 16px 60px; }
+  .two, .form-grid { grid-template-columns: 1fr; }
+  .log time { width: auto; }
+  .log li { flex-direction: column; gap: 2px; }
+}
+@media print {
+  .app, .toast, dialog { display: none !important; }
+  #print { display: block; color: #000; font: 12pt/1.4 system-ui, sans-serif; }
+  #print table th { background: #eee; color: #000; }
+  #print th, #print td { border: 1px solid #999; }
+  .sig { display: flex; gap: 40px; margin-top: 60px; }
+  .sig div { flex: 1; border-top: 1px solid #000; padding-top: 4px; font-size: 10pt; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="side" id="side" aria-label="Hauptnavigation">
+    <div class="brand">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z"/><path d="M10 8h4v8h-4z"/><path d="M12 8V5"/></svg>
+      <div>Funkverwaltung<small>Sicherheitsdienst</small></div>
+    </div>
+    <div id="navList"></div>
+    <div class="side-foot">
+      <div>Daten werden lokal im Browser gespeichert.</div>
+      <p><button id="themeBtn" type="button">Design wechseln</button></p>
+    </div>
+  </nav>
+  <main>
+    <header class="top">
+      <div style="display:flex;gap:10px;align-items:center">
+        <button class="btn menu-btn" id="menuBtn" type="button" aria-label="Menü öffnen">☰</button>
+        <h1 id="title"></h1>
+      </div>
+      <div id="headActions" class="toolbar" style="margin:0"></div>
+    </header>
+    <div id="view"></div>
+  </main>
+</div>
+
+<dialog id="dlg"><form id="dlgForm" method="dialog"></form></dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div id="print"></div>
+
+<script>
+'use strict';
+/* ---------- Storage ---------- */
+const KEY = 'funkverwaltung-sicherheit-v1';
+const empty = () => ({ devices: [], batteries: [], accessories: [], staff: [], sites: [], issues: [], log: [] });
+let db = load();
+function load() {
+  try { const raw = localStorage.getItem(KEY); if (raw) return Object.assign(empty(), JSON.parse(raw)); } catch (e) {}
+  return empty();
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { toast('Speichern nicht möglich (Browser-Speicher blockiert)'); }
+}
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+function addLog(text) { db.log.unshift({ ts: new Date().toISOString(), text }); if (db.log.length > 2000) db.log.length = 2000; }
+
+/* ---------- Helpers ---------- */
+const $ = (s, el = document) => el.querySelector(s);
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = iso => iso ? new Date(iso).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' }) : '–';
+const byId = (list, id) => db[list].find(x => x.id === id);
+const nameOf = (list, id, key = 'name') => { const x = byId(list, id); return x ? x[key] : '(gelöscht)'; };
+const openIssues = () => db.issues.filter(i => !i.returnedAt);
+const isOverdue = i => !i.returnedAt && i.dueAt && new Date(i.dueAt) < new Date();
+const toLocalInput = d => { const p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2400); }
+function download(name, content, type) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([content], { type })); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+const sortBy = (arr, key) => [...arr].sort((a, b) => String(a[key] ?? '').localeCompare(String(b[key] ?? ''), 'de', { numeric: true }));
+
+function deviceIssue(id) { return openIssues().find(i => i.deviceId === id); }
+function batteryIssue(id) { return openIssues().find(i => (i.batteryIds || []).includes(id)); }
+function accInUse(id) { return openIssues().reduce((s, i) => s + ((i.accessories || []).find(a => a.id === id)?.qty || 0), 0); }
+function deviceStatus(d) {
+  const iss = deviceIssue(d.id);
+  if (iss) return { key: 'ausgegeben', html: `<span class="badge ${isOverdue(iss) ? 'b-bad' : 'b-info'}">ausgegeben</span> <span class="muted">${esc(nameOf('staff', iss.staffId))}</span>` };
+  const s = d.status || 'verfügbar';
+  const cls = { 'verfügbar': 'b-ok', 'defekt': 'b-bad', 'wartung': 'b-warn' }[s] || 'b-warn';
+  return { key: s, html: `<span class="badge ${cls}">${esc(s)}</span>` };
+}
+function batteryStatus(b) {
+  const iss = batteryIssue(b.id);
+  if (iss) return { key: 'ausgegeben', html: `<span class="badge b-info">ausgegeben</span> <span class="muted">${esc(nameOf('devices', iss.deviceId, 'label'))}</span>` };
+  const s = b.status || 'verfügbar';
+  const cls = { 'verfügbar': 'b-ok', 'lädt': 'b-warn', 'defekt': 'b-bad' }[s] || 'b-warn';
+  return { key: s, html: `<span class="badge ${cls}">${esc(s)}</span>` };
+}
+
+/* ---------- Entity schemas (generic CRUD) ---------- */
+const SCHEMAS = {
+  devices: {
+    title: 'Funkgeräte', one: 'Funkgerät', main: 'label',
+    fields: [
+      { k: 'label', l: 'Kennung / Rufname', req: true, ph: 'z. B. FG-01' },
+      { k: 'model', l: 'Modell', ph: 'z. B. Motorola DP4400e' },
+      { k: 'serial', l: 'Seriennummer' },
+      { k: 'group', l: 'Kanal / Rufgruppe' },
+      { k: 'status', l: 'Status (wenn nicht ausgegeben)', type: 'select', opts: ['verfügbar', 'wartung', 'defekt'] },
+      { k: 'note', l: 'Notiz', type: 'textarea', full: true }
+    ],
+    cols: [['label', 'Kennung'], ['model', 'Modell'], ['serial', 'Seriennr.'], ['group', 'Kanal'], [d => deviceStatus(d).html, 'Status']],
+    statusKey: d => deviceStatus(d).key, statusOpts: ['verfügbar', 'ausgegeben', 'wartung', 'defekt'],
+    inUse: d => !!deviceIssue(d.id)
+  },
+  batteries: {
+    title: 'Akkus', one: 'Akku', main: 'label',
+    fields: [
+      { k: 'label', l: 'Kennung', req: true, ph: 'z. B. AK-01' },
+      { k: 'type', l: 'Typ / Kapazität', ph: 'z. B. Li-Ion 2250 mAh' },
+      { k: 'cycles', l: 'Ladezyklen', type: 'number' },
+      { k: 'purchased', l: 'Anschaffung (Jahr)', type: 'number' },
+      { k: 'status', l: 'Status (wenn nicht ausgegeben)', type: 'select', opts: ['verfügbar', 'lädt', 'defekt'] },
+      { k: 'note', l: 'Notiz', type: 'textarea', full: true }
+    ],
+    cols: [['label', 'Kennung'], ['type', 'Typ'], ['cycles', 'Zyklen'], ['purchased', 'Anschaffung'], [b => batteryStatus(b).html, 'Status']],
+    statusKey: b => batteryStatus(b).key, statusOpts: ['verfügbar', 'ausgegeben', 'lädt', 'defekt'],
+    inUse: b => !!batteryIssue(b.id)
+  },
+  accessories: {
+    title: 'Zubehör', one: 'Zubehör', main: 'name',
+    fields: [
+      { k: 'name', l: 'Bezeichnung', req: true, ph: 'z. B. Ohrhörer mit PTT' },
+      { k: 'type', l: 'Kategorie', type: 'select', opts: ['Headset / Ohrhörer', 'Lautsprechermikrofon', 'Ladegerät', 'Holster / Clip', 'Antenne', 'Sonstiges'] },
+      { k: 'total', l: 'Bestand gesamt', type: 'number', req: true },
+      { k: 'note', l: 'Notiz', type: 'textarea', full: true }
+    ],
+    cols: [['name', 'Bezeichnung'], ['type', 'Kategorie'], ['total', 'Bestand'], [a => accInUse(a.id), 'Ausgegeben'],
+      [a => { const f = (+a.total || 0) - accInUse(a.id); return `<span class="badge ${f > 0 ? 'b-ok' : 'b-bad'}">${f}</span>`; }, 'Frei']],
+    inUse: a => accInUse(a.id) > 0
+  },
+  staff: {
+    title: 'Personal', one: 'Mitarbeiter/in', main: 'name',
+    fields: [
+      { k: 'name', l: 'Name', req: true },
+      { k: 'number', l: 'Personal- / Ausweisnummer' },
+      { k: 'phone', l: 'Telefon', type: 'tel' },
+      { k: 'qual', l: 'Qualifikation', ph: 'z. B. §34a Sachkunde' },
+      { k: 'note', l: 'Notiz', type: 'textarea', full: true }
+    ],
+    cols: [['name', 'Name'], ['number', 'Personalnr.'], ['phone', 'Telefon'], ['qual', 'Qualifikation'],
+      [s => { const n = openIssues().filter(i => i.staffId === s.id).length; return n ? `<span class="badge b-info">${n} Gerät${n > 1 ? 'e' : ''}</span>` : '<span class="muted">–</span>'; }, 'Im Besitz']],
+    inUse: s => openIssues().some(i => i.staffId === s.id)
+  },
+  sites: {
+    title: 'Objekte', one: 'Objekt', main: 'name',
+    fields: [
+      { k: 'name', l: 'Objekt / Einsatzort', req: true, ph: 'z. B. Messehalle Nord' },
+      { k: 'address', l: 'Adresse' },
+      { k: 'channel', l: 'Funkkanal / Rufgruppe' },
+      { k: 'contact', l: 'Ansprechpartner' },
+      { k: 'note', l: 'Notiz', type: 'textarea', full: true }
+    ],
+    cols: [['name', 'Objekt'], ['address', 'Adresse'], ['channel', 'Kanal'], ['contact', 'Ansprechpartner'],
+      [s => { const n = openIssues().filter(i => i.siteId === s.id).length; return n ? `<span class="badge b-info">${n}</span>` : '<span class="muted">0</span>'; }, 'Geräte im Einsatz']],
+    inUse: s => openIssues().some(i => i.siteId === s.id)
+  }
+};
+
+/* ---------- Navigation ---------- */
+const VIEWS = [
+  ['dashboard', 'Übersicht'], ['issue', 'Ausgabe & Rücknahme'], ['devices', 'Funkgeräte'], ['batteries', 'Akkus'],
+  ['accessories', 'Zubehör'], ['staff', 'Personal'], ['sites', 'Objekte'], ['history', 'Verlauf'], ['data', 'Daten & Backup']
+];
+let current = 'dashboard';
+try { current = sessionStorage.getItem('fv-view') || 'dashboard'; } catch (e) {}
+const filters = {};
+
+function renderNav() {
+  const overdue = openIssues().filter(isOverdue).length;
+  $('#navList').innerHTML = VIEWS.map(([k, l]) => {
+    let pill = '';
+    if (k === 'issue') pill = overdue ? `<span class="pill alert" title="überfällig">${overdue}</span>` : (openIssues().length ? `<span class="pill">${openIssues().length}</span>` : '');
+    else if (SCHEMAS[k]) pill = `<span class="pill">${db[k].length}</span>`;
+    return `<button class="nav" type="button" data-view="${k}" ${k === current ? 'aria-current="page"' : ''}><span>${l}</span>${pill}</button>`;
+  }).join('');
+}
+$('#navList').addEventListener('click', e => { const b = e.target.closest('[data-view]'); if (b) go(b.dataset.view); });
+function go(v) { current = v; try { sessionStorage.setItem('fv-view', v); } catch (e) {} $('#side').classList.remove('open'); render(); window.scrollTo(0, 0); }
+$('#menuBtn').onclick = () => $('#side').classList.toggle('open');
+
+function render() {
+  renderNav();
+  const label = VIEWS.find(v => v[0] === current)?.[1] || '';
+  $('#title').textContent = label;
+  document.title = label + ' – Funkverwaltung';
+  $('#headActions').innerHTML = '';
+  if (SCHEMAS[current]) return renderList(current);
+  ({ dashboard: renderDashboard, issue: renderIssue, history: renderHistory, data: renderData }[current] || renderDashboard)();
+}
+
+/* ---------- Dashboard ---------- */
+function renderDashboard() {
+  const open = openIssues();
+  const overdue = open.filter(isOverdue);
+  const devFree = db.devices.filter(d => deviceStatus(d).key === 'verfügbar').length;
+  const devBad = db.devices.filter(d => ['defekt', 'wartung'].includes(deviceStatus(d).key)).length;
+  const batFree = db.batteries.filter(b => batteryStatus(b).key === 'verfügbar').length;
+  const batCharge = db.batteries.filter(b => batteryStatus(b).key === 'lädt').length;
+  $('#headActions').innerHTML = `<button class="btn primary" type="button" data-go="issue">+ Gerät ausgeben</button>`;
+  const bySite = {};
+  open.forEach(i => { bySite[i.siteId] = (bySite[i.siteId] || 0) + 1; });
+  $('#view').innerHTML = `
+    ${!db.devices.length ? `<div class="card" style="margin-bottom:18px"><h2>Willkommen</h2><p class="muted">Noch keine Daten vorhanden. Lege unter <b>Funkgeräte</b>, <b>Personal</b> und <b>Objekte</b> deine Stammdaten an – oder lade Beispieldaten zum Ausprobieren.</p><button class="btn" type="button" id="demoBtn">Beispieldaten laden</button></div>` : ''}
+    <div class="grid kpis">
+      <div class="card kpi"><div class="v">${db.devices.length}</div><div class="l">Funkgeräte gesamt</div></div>
+      <div class="card kpi"><div class="v">${devFree}</div><div class="l">Geräte verfügbar</div></div>
+      <div class="card kpi"><div class="v">${open.length}</div><div class="l">Geräte ausgegeben</div></div>
+      <div class="card kpi ${overdue.length ? 'bad' : ''}"><div class="v">${overdue.length}</div><div class="l">Rückgabe überfällig</div></div>
+      <div class="card kpi ${devBad ? 'bad' : ''}"><div class="v">${devBad}</div><div class="l">Defekt / Wartung</div></div>
+      <div class="card kpi"><div class="v">${batFree}<span class="muted" style="font-size:15px"> / ${db.batteries.length}</span></div><div class="l">Akkus verfügbar${batCharge ? ` · ${batCharge} lädt` : ''}</div></div>
+    </div>
+    <div class="grid two">
+      <div class="card"><h2>Überfällige Rückgaben</h2>${overdue.length ? issueTable(overdue, true) : '<div class="empty">Keine überfälligen Geräte 👍</div>'}</div>
+      <div class="card"><h2>Geräte je Objekt</h2>${Object.keys(bySite).length ? `<div class="table-wrap"><table><thead><tr><th>Objekt</th><th>Geräte</th></tr></thead><tbody>${Object.entries(bySite).sort((a, b) => b[1] - a[1]).map(([s, n]) => `<tr><td>${esc(nameOf('sites', s))}</td><td>${n}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">Aktuell keine Geräte im Einsatz.</div>'}</div>
+    </div>
+    <div class="card" style="margin-top:14px"><h2>Letzte Aktivitäten</h2>${logList(db.log.slice(0, 8))}</div>`;
+  $('#demoBtn')?.addEventListener('click', loadDemo);
+}
+document.addEventListener('click', e => { const g = e.target.closest('[data-go]'); if (g) go(g.dataset.go); });
+
+/* ---------- Issue / return ---------- */
+function issueTable(list, compact) {
+  return `<div class="table-wrap"><table><thead><tr><th>Gerät</th><th>Mitarbeiter/in</th>${compact ? '' : '<th>Objekt</th><th>Ausgabe</th>'}<th>Rückgabe bis</th><th></th></tr></thead><tbody>
+  ${list.map(i => `<tr class="${isOverdue(i) ? 'overdue' : ''}">
+    <td style="white-space:nowrap"><b>${esc(nameOf('devices', i.deviceId, 'label'))}</b>${!compact && i.batteryIds?.length ? `<br><span class="muted">${i.batteryIds.map(b => esc(nameOf('batteries', b, 'label'))).join(', ')}</span>` : ''}</td>
+    <td>${esc(nameOf('staff', i.staffId))}</td>
+    ${compact ? '' : `<td>${esc(nameOf('sites', i.siteId))}</td><td>${fmt(i.issuedAt)}</td>`}
+    <td>${fmt(i.dueAt)}${isOverdue(i) ? ' <span class="badge b-bad">überfällig</span>' : ''}</td>
+    <td class="actions"><button class="btn sm" type="button" data-print="${i.id}" title="Übergabeprotokoll drucken">Protokoll</button> <button class="btn sm primary" type="button" data-return="${i.id}">Rücknahme</button></td>
+  </tr>`).join('')}</tbody></table></div>`;
+}
+document.addEventListener('click', e => {
+  const r = e.target.closest('[data-return]'); if (r) return openReturn(r.dataset.return);
+  const p = e.target.closest('[data-print]'); if (p) return printProtocol(p.dataset.print);
+});
+
+function renderIssue() {
+  const devs = sortBy(db.devices.filter(d => deviceStatus(d).key === 'verfügbar'), 'label');
+  const bats = sortBy(db.batteries.filter(b => batteryStatus(b).key === 'verfügbar'), 'label');
+  const accs = sortBy(db.accessories, 'name');
+  const staff = sortBy(db.staff, 'name');
+  const sites = sortBy(db.sites, 'name');
+  const due = new Date(Date.now() + 12 * 3600e3);
+  const opt = (list, key) => list.map(x => `<option value="${x.id}">${esc(x[key])}</option>`).join('');
+  const missing = [!db.devices.length && 'Funkgeräte', !staff.length && 'Personal', !sites.length && 'Objekte'].filter(Boolean);
+  const open = [...openIssues()].sort((a, b) => (isOverdue(b) - isOverdue(a)) || String(a.dueAt).localeCompare(String(b.dueAt)));
+  $('#view').innerHTML = `
+  <div class="grid" style="grid-template-columns:minmax(0,1fr)">
+    <div class="card">
+      <h2>Schnellrücknahme</h2>
+      <form id="quickForm" class="toolbar" style="margin:0" autocomplete="off">
+        <input type="search" id="quickInput" placeholder="Gerätekennung oder Seriennummer eingeben / scannen …" aria-label="Gerätekennung für Rücknahme">
+        <button class="btn primary" type="submit">Zurücknehmen</button>
+      </form>
+    </div>
+    <div class="card">
+      <h2>Gerät ausgeben</h2>
+      ${missing.length ? `<p class="muted">Bitte zuerst anlegen: ${missing.join(', ')}.</p>` : `
+      <form id="issueForm" autocomplete="off">
+        <div class="form-grid">
+          <label class="f"><span>Mitarbeiter/in *</span><select name="staffId" required><option value="">– wählen –</option>${opt(staff, 'name')}</select></label>
+          <label class="f"><span>Objekt / Einsatzort *</span><select name="siteId" required><option value="">– wählen –</option>${opt(sites, 'name')}</select></label>
+          <label class="f"><span>Funkgerät *</span><select name="deviceId" required><option value="">${devs.length ? '– wählen –' : 'kein Gerät verfügbar'}</option>${devs.map(d => `<option value="${d.id}">${esc(d.label)}${d.model ? ' · ' + esc(d.model) : ''}${d.group ? ' · Kanal ' + esc(d.group) : ''}</option>`).join('')}</select></label>
+          <label class="f"><span>Rückgabe bis</span><input type="datetime-local" name="dueAt" value="${toLocalInput(due)}"></label>
+          <div class="f full"><span class="muted" style="font-size:13px;display:block;margin-bottom:4px">Akkus</span>
+            ${bats.length ? `<div class="checks">${bats.map(b => `<label><input type="checkbox" name="bat" value="${b.id}"> ${esc(b.label)}</label>`).join('')}</div>` : '<p class="muted" style="margin:0">Keine Akkus verfügbar.</p>'}</div>
+          <div class="f full" style="margin-top:12px"><span class="muted" style="font-size:13px;display:block;margin-bottom:4px">Zubehör (Anzahl)</span>
+            ${accs.length ? accs.map(a => { const free = (+a.total || 0) - accInUse(a.id); return `<div class="acc-row"><span>${esc(a.name)} <span class="muted">(${free} frei)</span></span><input type="number" min="0" max="${Math.max(free, 0)}" value="0" name="acc-${a.id}" ${free <= 0 ? 'disabled' : ''} aria-label="Anzahl ${esc(a.name)}"></div>`; }).join('') : '<p class="muted" style="margin:0">Kein Zubehör angelegt.</p>'}</div>
+          <label class="f full" style="margin-top:12px"><span>Bemerkung</span><input type="text" name="note" placeholder="z. B. Nachtschicht, Tor 3"></label>
+        </div>
+        <button class="btn primary" type="submit">Ausgeben</button>
+      </form>`}
+    </div>
+    <div class="card">
+      <h2>Ausgegebene Geräte (${open.length})</h2>
+      <div class="toolbar"><input type="search" id="openSearch" placeholder="Suchen nach Gerät, Person, Objekt …" value="${esc(filters.open || '')}"></div>
+      <div id="openList"></div>
+    </div>
+  </div>`;
+  const drawOpen = () => {
+    const q = (filters.open || '').toLowerCase();
+    const list = open.filter(i => !q || [nameOf('devices', i.deviceId, 'label'), nameOf('staff', i.staffId), nameOf('sites', i.siteId)].join(' ').toLowerCase().includes(q));
+    $('#openList').innerHTML = list.length ? issueTable(list) : '<div class="empty">Keine ausgegebenen Geräte.</div>';
+  };
+  drawOpen();
+  $('#openSearch').oninput = e => { filters.open = e.target.value; drawOpen(); };
+  $('#quickForm').onsubmit = e => {
+    e.preventDefault();
+    const q = $('#quickInput').value.trim().toLowerCase(); if (!q) return;
+    const d = db.devices.find(x => (x.label || '').toLowerCase() === q || (x.serial || '').toLowerCase() === q);
+    if (!d) return toast('Gerät nicht gefunden');
+    const iss = deviceIssue(d.id);
+    if (!iss) return toast(`${d.label} ist nicht ausgegeben`);
+    openReturn(iss.id);
+  };
+  const f = $('#issueForm');
+  if (f) f.onsubmit = e => {
+    e.preventDefault();
+    const fd = new FormData(f);
+    const accessories = db.accessories.map(a => ({ id: a.id, qty: Math.min(+fd.get('acc-' + a.id) || 0, (+a.total || 0) - accInUse(a.id)) })).filter(a => a.qty > 0);
+    const dueRaw = fd.get('dueAt');
+    const issue = {
+      id: uid(), deviceId: fd.get('deviceId'), staffId: fd.get('staffId'), siteId: fd.get('siteId'),
+      batteryIds: fd.getAll('bat'), accessories, issuedAt: new Date().toISOString(),
+      dueAt: dueRaw ? new Date(dueRaw).toISOString() : null, note: (fd.get('note') || '').trim()
+    };
+    if (deviceIssue(issue.deviceId)) return toast('Gerät ist bereits ausgegeben');
+    db.issues.unshift(issue);
+    addLog(`Ausgabe: ${nameOf('devices', issue.deviceId, 'label')} an ${nameOf('staff', issue.staffId)} (${nameOf('sites', issue.siteId)})`);
+    save(); toast('Gerät ausgegeben'); render();
+  };
+}
+
+function openReturn(id) {
+  const i = db.issues.find(x => x.id === id); if (!i || i.returnedAt) return;
+  const accTxt = (i.accessories || []).map(a => `${a.qty}× ${esc(nameOf('accessories', a.id))}`).join(', ');
+  showDialog(`
+    <h2>Rücknahme: ${esc(nameOf('devices', i.deviceId, 'label'))}</h2>
+    <p class="muted" style="margin-top:0">${esc(nameOf('staff', i.staffId))} · ${esc(nameOf('sites', i.siteId))} · seit ${fmt(i.issuedAt)}</p>
+    ${i.batteryIds?.length ? `<p><b>Akkus:</b> ${i.batteryIds.map(b => esc(nameOf('batteries', b, 'label'))).join(', ')}</p>` : ''}
+    ${accTxt ? `<p><b>Zubehör:</b> ${accTxt}</p>` : ''}
+    <label class="f"><span>Zustand Funkgerät</span><select name="cond"><option>in Ordnung</option><option>beschädigt</option><option>defekt</option><option>unvollständig</option></select></label>
+    ${i.batteryIds?.length ? `<label class="f" style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="charge" checked> Akkus zum Laden markieren (Zyklus +1)</label>` : ''}
+    <label class="f"><span>Bemerkung</span><textarea name="note" placeholder="z. B. Antenne locker"></textarea></label>
+    <div class="dlg-actions"><button class="btn" value="cancel" formnovalidate>Abbrechen</button><button class="btn primary" value="ok">Rücknahme bestätigen</button></div>`,
+  fd => {
+    const cond = fd.get('cond');
+    i.returnedAt = new Date().toISOString(); i.returnCondition = cond; i.returnNote = (fd.get('note') || '').trim();
+    const dev = byId('devices', i.deviceId);
+    if (dev && (cond === 'defekt' || cond === 'beschädigt')) dev.status = cond === 'defekt' ? 'defekt' : 'wartung';
+    if (fd.get('charge')) (i.batteryIds || []).forEach(b => { const x = byId('batteries', b); if (x) { x.status = 'lädt'; x.cycles = (+x.cycles || 0) + 1; } });
+    addLog(`Rücknahme: ${nameOf('devices', i.deviceId, 'label')} von ${nameOf('staff', i.staffId)} – ${cond}${i.returnNote ? ' (' + i.returnNote + ')' : ''}`);
+    save(); toast('Rücknahme gebucht'); render();
+  });
+}
+
+function printProtocol(id) {
+  const i = db.issues.find(x => x.id === id); if (!i) return;
+  const dev = byId('devices', i.deviceId) || {};
+  const st = byId('staff', i.staffId) || {};
+  const rows = [
+    ['Funkgerät', `${dev.label || ''} ${dev.model ? '(' + dev.model + ')' : ''}`], ['Seriennummer', dev.serial || '–'], ['Kanal / Rufgruppe', dev.group || '–'],
+    ['Akkus', (i.batteryIds || []).map(b => nameOf('batteries', b, 'label')).join(', ') || '–'],
+    ['Zubehör', (i.accessories || []).map(a => `${a.qty}× ${nameOf('accessories', a.id)}`).join(', ') || '–'],
+    ['Mitarbeiter/in', `${st.name || ''}${st.number ? ' · Nr. ' + st.number : ''}`], ['Objekt', nameOf('sites', i.siteId)],
+    ['Ausgabe', fmt(i.issuedAt)], ['Rückgabe bis', fmt(i.dueAt)], ['Bemerkung', i.note || '–']
+  ];
+  if (i.returnedAt) rows.push(['Zurückgegeben', fmt(i.returnedAt)], ['Zustand', `${i.returnCondition || ''} ${i.returnNote ? '– ' + i.returnNote : ''}`]);
+  $('#print').innerHTML = `<h1>Übergabeprotokoll Funkgerät</h1>
+    <p>Der/die Unterzeichnende bestätigt den Erhalt der folgenden Ausrüstung in einwandfreiem Zustand und verpflichtet sich zur pfleglichen Behandlung sowie zur fristgerechten Rückgabe.</p>
+    <table><tbody>${rows.map(([k, v]) => `<tr><th style="width:35%">${esc(k)}</th><td>${esc(v)}</td></tr>`).join('')}</tbody></table>
+    <div class="sig"><div>Ort, Datum, Unterschrift Ausgebende/r</div><div>Ort, Datum, Unterschrift Empfänger/in</div></div>`;
+  window.print();
+}
+
+/* ---------- Generic list ---------- */
+function renderList(kind) {
+  const S = SCHEMAS[kind];
+  $('#headActions').innerHTML = `<button class="btn primary" type="button" id="addBtn">+ ${S.one} anlegen</button>`;
+  $('#addBtn').onclick = () => openEdit(kind);
+  const f = filters[kind] || (filters[kind] = { q: '', s: '' });
+  $('#view').innerHTML = `<div class="card">
+    <div class="toolbar">
+      <input type="search" id="q" placeholder="Suchen …" value="${esc(f.q)}" aria-label="Suchen">
+      ${S.statusOpts ? `<select id="s" style="width:auto" aria-label="Status filtern"><option value="">Alle Status</option>${S.statusOpts.map(o => `<option ${f.s === o ? 'selected' : ''}>${o}</option>`).join('')}</select>` : ''}
+    </div>
+    <div id="rows"></div></div>`;
+  const draw = () => {
+    const q = f.q.toLowerCase();
+    const list = sortBy(db[kind], S.main).filter(x => (!q || S.fields.some(fl => String(x[fl.k] ?? '').toLowerCase().includes(q))) && (!f.s || S.statusKey(x) === f.s));
+    $('#rows').innerHTML = list.length ? `<div class="table-wrap"><table><thead><tr>${S.cols.map(c => `<th>${c[1]}</th>`).join('')}<th></th></tr></thead><tbody>
+      ${list.map(x => `<tr>${S.cols.map(([c]) => `<td>${typeof c === 'function' ? c(x) : esc(x[c] ?? '') || '<span class="muted">–</span>'}</td>`).join('')}
+      <td class="actions"><button class="btn sm" type="button" data-edit="${x.id}">Bearbeiten</button> <button class="btn sm danger" type="button" data-del="${x.id}">Löschen</button></td></tr>`).join('')}
+      </tbody></table></div>` : `<div class="empty">${db[kind].length ? 'Keine Treffer.' : `Noch keine Einträge. Lege den ersten Eintrag über „${S.one} anlegen“ an.`}</div>`;
+  };
+  draw();
+  $('#q').oninput = e => { f.q = e.target.value; draw(); };
+  if ($('#s')) $('#s').onchange = e => { f.s = e.target.value; draw(); };
+  $('#rows').onclick = e => {
+    const ed = e.target.closest('[data-edit]'); if (ed) return openEdit(kind, ed.dataset.edit);
+    const dl = e.target.closest('[data-del]'); if (!dl) return;
+    const x = byId(kind, dl.dataset.del);
+    if (S.inUse(x)) return toast('Löschen nicht möglich – aktuell in einer Ausgabe verwendet');
+    if (!confirm(`„${x[S.main]}“ wirklich löschen?`)) return;
+    db[kind] = db[kind].filter(y => y.id !== x.id);
+    addLog(`${S.one} gelöscht: ${x[S.main]}`); save(); toast('Gelöscht'); render();
+  };
+}
+
+function openEdit(kind, id) {
+  const S = SCHEMAS[kind];
+  const x = id ? byId(kind, id) : {};
+  const input = fl => {
+    const v = x[fl.k] ?? '';
+    const req = fl.req ? 'required' : '';
+    if (fl.type === 'select') return `<select name="${fl.k}">${fl.opts.map(o => `<option ${v === o ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
+    if (fl.type === 'textarea') return `<textarea name="${fl.k}">${esc(v)}</textarea>`;
+    return `<input type="${fl.type || 'text'}" name="${fl.k}" value="${esc(v)}" ${req} ${fl.type === 'number' ? 'min="0"' : ''} placeholder="${esc(fl.ph || '')}">`;
+  };
+  showDialog(`<h2>${id ? 'Bearbeiten' : 'Neu'}: ${S.one}</h2>
+    <div class="form-grid">${S.fields.map(fl => `<label class="f ${fl.full ? 'full' : ''}"><span>${fl.l}${fl.req ? ' *' : ''}</span>${input(fl)}</label>`).join('')}</div>
+    <div class="dlg-actions"><button class="btn" value="cancel" formnovalidate>Abbrechen</button><button class="btn primary" value="ok">Speichern</button></div>`,
+  fd => {
+    const obj = id ? x : { id: uid() };
+    S.fields.forEach(fl => { let v = (fd.get(fl.k) ?? '').toString().trim(); if (fl.type === 'number') v = v === '' ? '' : Math.max(0, +v); obj[fl.k] = v; });
+    const dup = db[kind].find(y => y.id !== obj.id && String(y[S.main]).toLowerCase() === String(obj[S.main]).toLowerCase());
+    if (dup && (kind === 'devices' || kind === 'batteries')) { toast('Diese Kennung existiert bereits'); return false; }
+    if (!id) db[kind].push(obj);
+    addLog(`${S.one} ${id ? 'geändert' : 'angelegt'}: ${obj[S.main]}`);
+    save(); toast('Gespeichert'); render();
+  });
+}
+
+/* ---------- Dialog ---------- */
+function showDialog(html, onOk) {
+  const dlg = $('#dlg'), form = $('#dlgForm');
+  form.innerHTML = html;
+  form.onsubmit = e => {
+    const sub = e.submitter;
+    if (sub && sub.value === 'cancel') return;
+    e.preventDefault();
+    if (onOk(new FormData(form)) !== false) dlg.close();
+  };
+  dlg.showModal();
+  form.querySelector('input:not([type=checkbox]),select,textarea')?.focus();
+}
+
+/* ---------- History ---------- */
+function logList(list) {
+  return list.length ? `<ul class="log">${list.map(l => `<li><time datetime="${l.ts}">${fmt(l.ts)}</time><span>${esc(l.text)}</span></li>`).join('')}</ul>` : '<div class="empty">Noch keine Aktivitäten.</div>';
+}
+function renderHistory() {
+  $('#headActions').innerHTML = `<button class="btn" type="button" id="csvBtn">Ausgaben als CSV</button>`;
+  $('#csvBtn').onclick = exportCsv;
+  const done = db.issues.filter(i => i.returnedAt).slice(0, 200);
+  $('#view').innerHTML = `
+    <div class="card" style="margin-bottom:14px"><h2>Abgeschlossene Ausgaben</h2>
+      ${done.length ? `<div class="table-wrap"><table><thead><tr><th>Gerät</th><th>Mitarbeiter/in</th><th>Objekt</th><th>Ausgabe</th><th>Rückgabe</th><th>Zustand</th><th></th></tr></thead><tbody>
+      ${done.map(i => `<tr><td>${esc(nameOf('devices', i.deviceId, 'label'))}</td><td>${esc(nameOf('staff', i.staffId))}</td><td>${esc(nameOf('sites', i.siteId))}</td><td>${fmt(i.issuedAt)}</td><td>${fmt(i.returnedAt)}</td>
+      <td><span class="badge ${i.returnCondition === 'in Ordnung' ? 'b-ok' : 'b-bad'}">${esc(i.returnCondition)}</span>${i.returnNote ? `<br><span class="muted">${esc(i.returnNote)}</span>` : ''}</td>
+      <td class="actions"><button class="btn sm" type="button" data-print="${i.id}">Protokoll</button></td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">Noch keine abgeschlossenen Ausgaben.</div>'}
+    </div>
+    <div class="card"><h2>Aktivitätsprotokoll</h2>
+      <div class="toolbar"><input type="search" id="logQ" placeholder="Protokoll durchsuchen …" value="${esc(filters.log || '')}"></div>
+      <div id="logBox"></div></div>`;
+  const draw = () => { const q = (filters.log || '').toLowerCase(); $('#logBox').innerHTML = logList(db.log.filter(l => !q || l.text.toLowerCase().includes(q)).slice(0, 300)); };
+  draw();
+  $('#logQ').oninput = e => { filters.log = e.target.value; draw(); };
+}
+function exportCsv() {
+  const cell = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const head = ['Gerät', 'Seriennummer', 'Akkus', 'Zubehör', 'Mitarbeiter/in', 'Personalnr.', 'Objekt', 'Ausgabe', 'Rückgabe bis', 'Zurückgegeben', 'Zustand', 'Bemerkung'];
+  const rows = db.issues.map(i => { const d = byId('devices', i.deviceId) || {}; const s = byId('staff', i.staffId) || {}; return [
+    d.label, d.serial, (i.batteryIds || []).map(b => nameOf('batteries', b, 'label')).join(' '), (i.accessories || []).map(a => `${a.qty}x ${nameOf('accessories', a.id)}`).join(' '),
+    s.name, s.number, nameOf('sites', i.siteId), fmt(i.issuedAt), fmt(i.dueAt), i.returnedAt ? fmt(i.returnedAt) : '', i.returnCondition, [i.note, i.returnNote].filter(Boolean).join(' / ')]; });
+  download(`ausgaben-${new Date().toISOString().slice(0, 10)}.csv`, '﻿' + [head, ...rows].map(r => r.map(cell).join(';')).join('\r\n'), 'text/csv;charset=utf-8');
+}
+
+/* ---------- Data ---------- */
+function renderData() {
+  $('#view').innerHTML = `<div class="grid two">
+    <div class="card"><h2>Backup</h2><p class="muted">Alle Daten liegen ausschließlich in diesem Browser. Erstelle regelmäßig ein Backup, um Datenverlust zu vermeiden oder Daten auf ein anderes Gerät zu übertragen.</p>
+      <div class="toolbar"><button class="btn primary" type="button" id="expBtn">Backup herunterladen (JSON)</button>
+      <label class="btn">Backup einspielen<input type="file" id="impFile" accept="application/json,.json" hidden></label></div></div>
+    <div class="card"><h2>Bestand</h2><p>${db.devices.length} Funkgeräte · ${db.batteries.length} Akkus · ${db.accessories.length} Zubehörartikel · ${db.staff.length} Mitarbeiter/innen · ${db.sites.length} Objekte · ${db.issues.length} Ausgaben</p>
+      <div class="toolbar"><button class="btn" type="button" id="demoBtn">Beispieldaten laden</button><button class="btn danger" type="button" id="resetBtn">Alle Daten löschen</button></div></div>
+  </div>`;
+  $('#expBtn').onclick = () => download(`funkverwaltung-backup-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(db, null, 2), 'application/json');
+  $('#impFile').onchange = async e => {
+    const file = e.target.files[0]; if (!file) return;
+    try {
+      const data = JSON.parse(await file.text());
+      if (!data || !Array.isArray(data.devices) || !Array.isArray(data.issues)) throw new Error('Format');
+      if (!confirm('Aktuelle Daten durch das Backup ersetzen?')) return;
+      db = Object.assign(empty(), data); addLog('Backup eingespielt'); save(); toast('Backup eingespielt'); render();
+    } catch (err) { toast('Ungültige Backup-Datei'); }
+  };
+  $('#demoBtn').onclick = loadDemo;
+  $('#resetBtn').onclick = () => { if (confirm('Wirklich ALLE Daten unwiderruflich löschen?')) { db = empty(); save(); toast('Alle Daten gelöscht'); render(); } };
+}
+
+function loadDemo() {
+  if (db.devices.length && !confirm('Beispieldaten zu den vorhandenen Daten hinzufügen?')) return;
+  const mk = (list, arr) => arr.map(o => { const x = { id: uid(), ...o }; db[list].push(x); return x; });
+  const devs = mk('devices', Array.from({ length: 10 }, (_, n) => ({ label: `FG-${String(n + 1).padStart(2, '0')}`, model: n < 6 ? 'Motorola DP4400e' : 'Hytera PD785', serial: `SN${48210 + n * 17}`, group: n < 6 ? '1' : '2', status: n === 9 ? 'defekt' : 'verfügbar', note: '' })));
+  const bats = mk('batteries', Array.from({ length: 14 }, (_, n) => ({ label: `AK-${String(n + 1).padStart(2, '0')}`, type: 'Li-Ion 2250 mAh', cycles: 20 + n * 9, purchased: 2023 + (n % 3), status: n > 11 ? 'lädt' : 'verfügbar', note: '' })));
+  const accs = mk('accessories', [
+    { name: 'Ohrhörer mit PTT', type: 'Headset / Ohrhörer', total: 12 }, { name: 'Lautsprechermikrofon', type: 'Lautsprechermikrofon', total: 6 },
+    { name: 'Mehrfachladegerät 6-fach', type: 'Ladegerät', total: 2 }, { name: 'Gürtelholster', type: 'Holster / Clip', total: 10 }]);
+  const staff = mk('staff', [
+    { name: 'Anna Schulz', number: 'MA-1021', phone: '0151 2345678', qual: '§34a Sachkunde' }, { name: 'Mehmet Yilmaz', number: 'MA-1034', phone: '0160 9876543', qual: '§34a Sachkunde' },
+    { name: 'Jonas Becker', number: 'MA-1047', phone: '', qual: '§34a Unterrichtung' }, { name: 'Laura Neumann', number: 'MA-1052', phone: '0172 1122334', qual: 'Objektleitung' }]);
+  const sites = mk('sites', [
+    { name: 'Messehalle Nord', address: 'Messeallee 1', channel: '1', contact: 'Hr. Krüger' }, { name: 'Logistikzentrum Ost', address: 'Industriestr. 12', channel: '2', contact: 'Fr. Wagner' },
+    { name: 'Stadtfest Innenstadt', address: 'Marktplatz', channel: '1', contact: 'Ordnungsamt' }]);
+  const now = Date.now();
+  [[0, 0, 0, [0, 1], -3, 9], [1, 1, 0, [2], -5, 7], [6, 2, 1, [3], -14, -2]].forEach(([d, s, si, b, from, to]) => {
+    db.issues.unshift({ id: uid(), deviceId: devs[d].id, staffId: staff[s].id, siteId: sites[si].id, batteryIds: b.map(x => bats[x].id),
+      accessories: [{ id: accs[0].id, qty: 1 }], issuedAt: new Date(now + from * 3600e3).toISOString(), dueAt: new Date(now + to * 3600e3).toISOString(), note: '' });
+  });
+  addLog('Beispieldaten geladen'); save(); toast('Beispieldaten geladen'); render();
+}
+
+/* ---------- Theme ---------- */
+try { const t = localStorage.getItem('fv-theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+$('#themeBtn').onclick = () => {
+  const dark = document.documentElement.dataset.theme ? document.documentElement.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  const t = dark ? 'light' : 'dark';
+  document.documentElement.dataset.theme = t;
+  try { localStorage.setItem('fv-theme', t); } catch (e) {}
+};
+
+/* Overdue state changes with time: refresh once a minute */
+setInterval(() => { if (!$('#dlg').open && !document.activeElement?.closest('form')) render(); }, 60000);
+window.addEventListener('storage', e => { if (e.key === KEY) { db = load(); render(); } });
+render();
+</script>
+</body>
+</html>
